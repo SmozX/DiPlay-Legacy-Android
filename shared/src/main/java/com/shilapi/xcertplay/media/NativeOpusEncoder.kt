@@ -29,7 +29,7 @@ internal class NativeOpusEncoder private constructor(private var handle: Long) :
                 .getOrDefault(false)
         }
 
-        fun isAvailable(): Boolean = loaded
+        fun isAvailable(): Boolean = create(48_000)?.use { it.available } == true
 
         fun create(bitrate: Int): NativeOpusEncoder? {
             if (!loaded) return null
