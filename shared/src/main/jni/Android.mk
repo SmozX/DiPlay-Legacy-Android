@@ -38,7 +38,8 @@ include $(BUILD_SHARED_LIBRARY)
 # Keep libopus's published source lists; do not depend on platform MediaCodec.
 # Fail builds missing the required pinned libopus source rather than silently disabling fallback.
 ifeq ($(wildcard $(LOCAL_PATH)/libopus/opus_sources.mk),)
-$(error libopus sources missing: run scripts/prepare-libopus.py) 
+$(error libopus sources missing: run scripts/prepare-libopus.py)
+endif
 include $(LOCAL_PATH)/libopus/opus_sources.mk
 include $(LOCAL_PATH)/libopus/celt_sources.mk
 include $(LOCAL_PATH)/libopus/silk_sources.mk
@@ -54,4 +55,3 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/libopus/include \
 LOCAL_CFLAGS := -O2 -DOPUS_BUILD -DFIXED_POINT=1 -DDISABLE_FLOAT_API -DUSE_ALLOCA
 LOCAL_LDLIBS := -lm
 include $(BUILD_SHARED_LIBRARY)
-endif
