@@ -14,7 +14,9 @@ import android.os.Build
  */
 object OpusEncoderSupport {
     /** Treats an unreadable codec list as no encoder: PCM uplink works everywhere, Opus does not. */
-    fun isAvailable(): Boolean = try {
+    fun isAvailable(): Boolean = hasPlatformEncoder() || NativeOpusEncoder.isAvailable()
+
+    private fun hasPlatformEncoder(): Boolean = try {
         if (Build.VERSION.SDK_INT >= 21) {
             MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
                 info.isEncoder && info.supportedTypes.any {
