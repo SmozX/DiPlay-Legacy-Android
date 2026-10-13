@@ -32,3 +32,26 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/speexdsp $(LOCAL_PATH)/speexdsp/include
 LOCAL_CFLAGS := -O2 -DFLOATING_POINT -DUSE_KISS_FFT -DEXPORT= -Wno-unused-parameter
 LOCAL_LDLIBS := -lm
 include $(BUILD_SHARED_LIBRARY)
+
+# Software Opus microphone encoder. The pinned upstream source is restored by CI
+# (or locally into shared/src/main/jni/libopus) before Gradle's ndk-build task.
+# Keep libopus's published source lists; do not depend on platform MediaCodec.
+# Fail builds missing the required pinned libopus source rather than silently disabling fallback.
+ifeq ($(wildcard $(LOCAL_PATH)/libopus/opus_sources.mk),)
+$(error libopus sources missing: run scripts/prepare-libopus.py) 
+include $(LOCAL_PATH)/libopus/opus_sources.mk
+include $(LOCAL_PATH)/libopus/celt_sources.mk
+include $(LOCAL_PATH)/libopus/silk_sources.mk
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := opus_microphone
+LOCAL_SRC_FILES := opus_encoder_jni.c \
+    $(addprefix libopus/,$(OPUS_SOURCES) \
+    $(CELT_SOURCES) $(SILK_SOURCES) $(SILK_SOURCES_FIXED))
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/libopus/include \
+    $(LOCAL_PATH)/libopus/celt $(LOCAL_PATH)/libopus/silk \
+    $(LOCAL_PATH)/libopus/silk/fixed
+LOCAL_CFLAGS := -O2 -DOPUS_BUILD -DFIXED_POINT=1 -DDISABLE_FLOAT_API -DUSE_ALLOCA
+LOCAL_LDLIBS := -lm
+include $(BUILD_SHARED_LIBRARY)
+endif
