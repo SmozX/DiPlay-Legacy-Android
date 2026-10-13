@@ -34,19 +34,20 @@ internal class OpusEncoder(bitrate: Int) : Closeable {
         Log.w(TAG, "Opus microphone encoder unavailable", error)
         null
     }
+    private val native: NativeOpusEncoder? = if (codec == null) NativeOpusEncoder.create(bitrate) else null
     private val bufferInfo = MediaCodec.BufferInfo()
     private var presentationTimeUs = 0L
     private var closed = false
     private var outputPackets = 0
 
-    val available: Boolean get() = codec != null && !closed
+    val available: Boolean get() = !closed && (codec != null || native?.available == true)
 
     /**
      * Queues one 20 ms PCM frame and returns all Opus access units made available by the codec.
      */
     fun encode(pcm: ByteArray): List<ByteArray> {
-        val codec = codec ?: return emptyList()
         if (closed) return emptyList()
+        val codec = codec ?: return native?.encode(pcm) ?: emptyList()
         val inputIndex = try {
             codec.dequeueInputBuffer(INPUT_TIMEOUT_US)
         } catch (error: Exception) {
@@ -127,6 +128,7 @@ internal class OpusEncoder(bitrate: Int) : Closeable {
     override fun close() {
         if (closed) return
         closed = true
+        native?.close()
         val codec = codec ?: return
         try {
             codec.stop()
