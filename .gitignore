@@ -42,3 +42,6 @@ release-signing.properties
 *.key
 *.apk
 *.aab
+
+# Pinned libopus dependency retrieved by scripts/prepare-libopus.py
+/shared/src/main/jni/libopus/
