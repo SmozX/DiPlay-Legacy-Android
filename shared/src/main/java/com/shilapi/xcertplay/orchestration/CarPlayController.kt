@@ -11,6 +11,7 @@ import com.shilapi.xcertplay.compat.realSdkInt
 import com.shilapi.xcertplay.media.musicVolumeWarning
 import com.shilapi.xcertplay.bluetooth.BluetoothAddressResolver
 import com.shilapi.xcertplay.bluetooth.CarPlayBluetoothManager
+import com.shilapi.xcertplay.bluetooth.CarPlayAudioProfileGuard
 import android.bluetooth.BluetoothSocket
 import android.content.ComponentName
 import android.content.Context
@@ -307,6 +308,11 @@ class CarPlayController(
         }
     }
 
+    private val audioProfileGuard = CarPlayAudioProfileGuard(appContext)
+    private val audioProfileExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+        Thread(task, "diplay-audio-profile").apply { isDaemon = true }
+    }
+
     private val sessionListener = object : AirPlaySessionListener {
         override fun onSessionActive(session: AirPlaySession) {
             val replacement = activeSession !== session
@@ -321,6 +327,16 @@ class CarPlayController(
                 }
             }
             activeSession = session
+            if (replacement && CarPlayAudioProfileGuard.enabled(appContext)) {
+                audioProfileExecutor.execute {
+                    if (!closed && activeSession === session &&
+                        (config.transport != CarPlayTransport.WIRELESS || wirelessTunnelReady.get())) {
+                        audioProfileGuard.suppress(::debugLog)
+                    } else {
+                        debugLog("audio profile guard: skip before wireless tunnel ready")
+                    }
+                }
+            }
             if (replacement) restoreDashboardContent(session)
             // Issue #95: wired first-TCP watchdog 鈥?a session only becomes active after the
             // iPhone opened the AirPlay TCP connection and completed the handshake.
@@ -368,6 +384,9 @@ class CarPlayController(
                     nowPlayingListener?.invoke(cleared)
                     if (wasPlaying) playbackListener?.invoke(false)
                 }
+            }
+            if (activeSession == null) {
+                audioProfileExecutor.execute { audioProfileGuard.restore(::debugLog) }
             }
             debugLog("AirPlay session ended peer=${session.host}")
             uiListener?.onSessionEnded(session)
