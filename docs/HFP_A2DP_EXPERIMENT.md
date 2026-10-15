@@ -1,6 +1,6 @@
 # Experimental HFP + A2DP conflict management (test branch)
 
-Status: **scaffold only; not wired into the active CarPlay lifecycle; off by default.**
+Status: **experimental; connected to CarPlay session callbacks; on by default in the test branch.**
 No production release should claim automatic disconnection yet.
 
 ## Objective
@@ -9,7 +9,7 @@ After a verified CarPlay session, suppress the SAME iPhone's HFP and A2DP only, 
 ## Current implementation
 - `CarPlayAudioProfileGuard.kt` provides an opt-in flag (default false), reads bonded devices, and attempts per-profile methods by reflection.
 - This is an experiment, NOT proven to work on production head units. Some Android versions block hidden methods or require platform privileges.
-- No UI toggle or active session hook is installed. The class therefore does nothing in current builds.
+- A toggle is available under Advanced media; it defaults on only in this test branch. Session start and end callbacks invoke the guard. If wireless tunneling is not ready when the session starts, the current version skips suppression instead of retrying later.
 - The current unique-"iPhone" name heuristic is not sufficient to authenticate the active CarPlay device. DO NOT activate this prototype until the peer identity is explicitly tied to the session.
 - Profile method return values do not prove the link changed; add state observations before accepting a disconnect/restoration.
 - Never call the blocking profile-proxy wait on the UI thread.
