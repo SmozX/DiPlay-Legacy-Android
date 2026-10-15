@@ -39,7 +39,16 @@ object CarHotspotTethering {
     ): Result {
         val deadline = System.nanoTime() + timeoutMillis * 1_000_000L
         val observedAdbState = AtomicReference<Boolean?>()
-        val startReflection: (ResultReceiver) -> Unit = { receiver ->
+        val startReflection: (ResultReceiver) -> Unit = legacyStart@{ receiver ->
+            if (realSdkInt() in 16..23) {
+                when (LegacyCarHotspotStarter.start(context, log)) {
+                    LegacyCarHotspotStarter.Result.REQUESTED,
+                    LegacyCarHotspotStarter.Result.ALREADY_ON -> return@legacyStart
+                    LegacyCarHotspotStarter.Result.PERMISSION_REQUIRED -> throw SecurityException("Legacy SoftAP permission unavailable")
+                    LegacyCarHotspotStarter.Result.UNSUPPORTED -> throw NoSuchMethodException("Legacy SoftAP API unavailable")
+                    LegacyCarHotspotStarter.Result.REJECTED -> throw IllegalStateException("Legacy SoftAP start rejected by firmware")
+                }
+            }
             if (Build.VERSION.SDK_INT >= 37) throw NoSuchMethodException("Hidden tethering service is unavailable on API 37+")
             val conn = if (realSdkInt() >= Build.VERSION_CODES.M) {
                 context.getSystemService(ConnectivityManager::class.java)
