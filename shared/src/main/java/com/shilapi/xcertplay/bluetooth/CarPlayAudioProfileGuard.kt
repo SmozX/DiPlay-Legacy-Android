@@ -39,7 +39,7 @@ class CarPlayAudioProfileGuard(private val context: Context) {
 
     /** Call from a worker, never on the UI or Bluetooth binder thread. */
     @Suppress("MissingPermission")
-    fun suppress(log: (String) -> Unit) {
+    fun suppress(targetAddress: String, log: (String) -> Unit) {
         if (!enabled(context)) return
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
         if (Build.VERSION.SDK_INT >= 31 &&
@@ -47,19 +47,14 @@ class CarPlayAudioProfileGuard(private val context: Context) {
             log("audio profile guard: missing BLUETOOTH_CONNECT")
             return
         }
-        val candidates = try {
-            adapter.bondedDevices.orEmpty().filter {
-                it.name?.contains("iPhone", ignoreCase = true) == true
-            }
-        } catch (error: SecurityException) {
-            log("audio profile guard: bonded devices not readable")
+        if (!BluetoothAdapter.checkBluetoothAddress(targetAddress)) return
+        val device = runCatching {
+            adapter.bondedDevices.singleOrNull { it.address.equals(targetAddress, true) }
+        }.getOrNull() ?: run {
+            log("audio profile guard: target not uniquely bonded")
             return
         }
-        if (!isUnambiguousCandidate(candidates.mapNotNull { it.name })) {
-            log("audio profile guard: skip ambiguous iPhone identity")
-            return
-        }
-        val device = candidates.single()
+        log("audio profile guard: exact target matched")
         synchronized(lock) {
             if (ownedAddress != null) return
             ownedAddress = device.address
@@ -96,6 +91,7 @@ class CarPlayAudioProfileGuard(private val context: Context) {
             override fun onServiceConnected(id: Int, proxy: BluetoothProfile) {
                 try {
                     val connected = proxy.connectedDevices.orEmpty().any { it.address == device.address }
+                    log("audio profile guard: profile=$profile beforeConnected=$connected")
                     if (reconnect || connected) {
                         // Deliberately reflect only on a live profile proxy; no global adapter shutdown.
                         val methodName = if (reconnect) "connect" else "disconnect"
@@ -107,6 +103,7 @@ class CarPlayAudioProfileGuard(private val context: Context) {
                             if (ownedAddress == device.address) previouslyConnected.add(profile)
                         }
                         log("audio profile guard: profile=$profile reconnect=$reconnect accepted=$accepted")
+                        log("audio profile guard: profile=$profile immediateConnected=${proxy.connectedDevices.orEmpty().any { it.address == device.address }}")
                     }
                 } catch (error: Exception) {
                     log("audio profile guard: profile=$profile unsupported=${error.javaClass.simpleName}")
