@@ -308,6 +308,9 @@ class CarPlayController(
         }
     }
 
+    @Volatile private var audioGuardTargetAddress: String? = null
+    @Volatile private var audioGuardRenderedSession: AirPlaySession? = null
+    @Volatile private var audioGuardCompletedSession: AirPlaySession? = null
     private val audioProfileGuard = CarPlayAudioProfileGuard(appContext)
     private val audioProfileExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
         Thread(task, "diplay-audio-profile").apply { isDaemon = true }
@@ -327,15 +330,9 @@ class CarPlayController(
                 }
             }
             activeSession = session
-            if (replacement && CarPlayAudioProfileGuard.enabled(appContext)) {
-                audioProfileExecutor.execute {
-                    if (!closed && activeSession === session &&
-                        (config.transport != CarPlayTransport.WIRELESS || wirelessTunnelReady.get())) {
-                        audioProfileGuard.suppress(::debugLog)
-                    } else {
-                        debugLog("audio profile guard: skip before wireless tunnel ready")
-                    }
-                }
+            if (replacement) {
+                audioGuardRenderedSession = null
+                audioGuardCompletedSession = null
             }
             if (replacement) restoreDashboardContent(session)
             // Issue #95: wired first-TCP watchdog 鈥?a session only becomes active after the
@@ -1358,6 +1355,7 @@ class CarPlayController(
                 debugLog("wireless Bluetooth device selection not available: ${error.message}; proceeding with Wi-Fi discovery")
                 null
             }
+            audioGuardTargetAddress = device?.address
             val hostBluetoothMac = accessoryBluetoothMac(adapter)
             debugLog(
                 "wireless selected Bluetooth target targetAddress=${device?.address ?: "none"} localBt=$hostBluetoothMac",
@@ -1793,7 +1791,11 @@ class CarPlayController(
                         true
                     }
                 }
-                if (firstFrame) uiListener?.onVideoFrameRendered(session)
+                if (firstFrame) {
+                    audioGuardRenderedSession = session
+                    maybeScheduleAudioProfileGuard(generation)
+                    uiListener?.onVideoFrameRendered(session)
+                }
             }
 
             override fun onDebugLog(message: String) {
@@ -1808,6 +1810,30 @@ class CarPlayController(
             override fun onVideoPlaybackUiRequested(session: AirPlaySession) =
                 sessionListener.onVideoPlaybackUiRequested(session)
         }
+
+    /** Trigger once per rendered session after the Wi-Fi handoff has released RFCOMM. */
+    private fun maybeScheduleAudioProfileGuard(generation: Int) {
+        val session = activeSession ?: return
+        val address = audioGuardTargetAddress ?: return
+        if (!CarPlayAudioProfileGuard.enabled(appContext) ||
+            audioGuardRenderedSession !== session || audioGuardCompletedSession === session ||
+            !wirelessTunnelReady.get() || !wirelessActiveReported.get() ||
+            wirelessHandoffFellBack.get() || isStaleWirelessRun(generation)) return
+        audioGuardCompletedSession = session
+        audioProfileExecutor.execute {
+            try {
+                Thread.sleep(1000L)
+                if (!closed && activeSession === session && wirelessGeneration.get() == generation &&
+                    wirelessTunnelReady.get() && wirelessActiveReported.get() &&
+                    !wirelessHandoffFellBack.get()) {
+                    debugLog("audio profile guard: rendered frame and Wi-Fi handoff stable; beginning HFP/A2DP")
+                    audioProfileGuard.suppress(address, ::debugLog)
+                } else debugLog("audio profile guard: skipped after stability check")
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+    }
 
     private fun onWirelessTunnelReady(generation: Int) {
         synchronized(wirelessResourceLock) {
@@ -1841,6 +1867,11 @@ class CarPlayController(
                     debugLog("wireless handoff ready; closing Bluetooth bootstrap transport")
                     closeBluetoothBootstrapTransport()
                     onStatus(CarPlayStatus.WirelessActive, generation)
+                }
+                maybeScheduleAudioProfileGuard(generation)
+                synchronized(wirelessResourceLock) {
+                    // Existing handoff callback remains authoritative for session status.
+                    Unit
                 }
             },
             "xcertplay-wireless-handoff",
