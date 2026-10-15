@@ -47,6 +47,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.shilapi.xcertplay.adb.LocalAdb
 import com.shilapi.xcertplay.bluetooth.BluetoothAddressResolver
+import com.shilapi.xcertplay.bluetooth.CarPlayAudioProfileGuard
 import com.shilapi.xcertplay.airplay.CarPlayClusterDisplay
 import com.shilapi.xcertplay.airplay.CarPlayDisplayScale
 import com.shilapi.xcertplay.airplay.ClusterTurnCardOverlay
@@ -1505,6 +1506,12 @@ class DiPlayActivity : ComponentActivity() {
             toggle(card, getString(R.string.call_voice_filter), getString(R.string.call_voice_filter_description),
                 AirPlayPersistence.loadCallVoiceFilter(this)) {
                 AirPlayPersistence.saveCallVoiceFilter(this, it)
+                markReconnectNeeded()
+            }
+            toggle(card, "Automatically disconnect phone Bluetooth (experimental)",
+                "Disconnect iPhone HFP and A2DP during CarPlay; applies on next connection. May not work on some head units.",
+                CarPlayAudioProfileGuard.enabled(this)) {
+                CarPlayAudioProfileGuard.setEnabled(this, it)
                 markReconnectNeeded()
             }
             audioFocusControls(card)
