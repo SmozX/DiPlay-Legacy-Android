@@ -154,13 +154,13 @@ object CarHotspotTethering {
                 }
             }
             val unknown = initialState == null
-            if (unknown) {
+            if (unknown && realSdkInt() !in 16..23) {
                 if (!fallback()) return stopped() ?: Result.UNSUPPORTED
             }
             val response = AtomicInteger(-1)
             try {
                 stopped()?.let { return it }
-                if (!unknown) {
+                if (!unknown || realSdkInt() in 16..23) {
                     start(object : ResultReceiver(null) {
                         override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                             response.set(resultCode)
