@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
  * Only a positively identified single bonded iPhone is eligible. Hidden disconnectProfile
  * APIs are firmware-dependent and may be blocked; failure is non-fatal.
  */
-internal class CarPlayAudioProfileGuard(private val context: Context) {
+class CarPlayAudioProfileGuard(private val context: Context) {
     companion object {
         private const val TAG = "CarPlayAudioGuard"
         private const val PREFS = "diplay_audio_profile_guard"
