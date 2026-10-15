@@ -1277,6 +1277,26 @@ class DiPlayActivity : ComponentActivity() {
             getString(R.string.connection_setup), R.drawable.ic_dp_connection) { card ->
             card.addView(label(getString(R.string.choose_how_to_connect_follow_the_setup_steps_and_save_your), 16, MUTED))
             card.addView(button(getString(R.string.open_connection_setup), false, ::openConnectionSetupFromSettings), matchButton(12, 60))
+            if (com.shilapi.xcertplay.compat.realSdkInt() in 16..23) {
+                toggle(card, "Automatically start car hotspot (legacy Android, experimental)",
+                    "Uses the saved car hotspot for Android 4.1–6.0. Applies on next connection; firmware permission may still be required.",
+                    CarHotspotSettings.enabled(this)) {
+                    CarHotspotSettings.setEnabled(this, it)
+                    markReconnectNeeded()
+                }
+                if (android.os.Build.VERSION.SDK_INT >= 23 &&
+                    !android.provider.Settings.System.canWrite(this)) {
+                    card.addView(button("Grant hotspot settings permission", false) {
+                        val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                            Uri.parse("package:$packageName"))
+                        runCatching { startActivity(intent) }
+                            .onFailure {
+                                runCatching { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.parse("package:$packageName"))) }
+                            }
+                    }, matchButton(12, 60))
+                }
+            }
             val customMac = AirPlayPersistence.loadCustomBluetoothMac(this)
             val detectedMac = BluetoothAddressResolver.resolve(this)
             val displayValue = when {
