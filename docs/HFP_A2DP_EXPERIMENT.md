@@ -28,3 +28,12 @@ After a verified CarPlay session, suppress the SAME iPhone's HFP and A2DP only, 
 8. Hidden API missing / permission denied: graceful skip.
 9. Firmware reconnect loops are bounded and logged.
 10. Crash/restart recovery never reconnects an unrelated peer.
+
+## 2026-10-15 wireless timing revision
+- Require the first decoded/rendered AirPlay video frame and successful tunneled iAP2 handoff before attempting HFP/A2DP disconnect.
+- Schedule a one-second session-stability check after both events. Cancel by rechecking session identity and wireless generation before acting.
+- Resolve the Bluetooth target by exact selected wireless iPhone address, not a unique name containing 'iPhone'. Ambiguous/unbonded addresses fail closed.
+- Add before/immediate-after profile state diagnostics. An immediate state read is not proof of final disconnection: Bluetooth profile changes are asynchronous.
+- If the session has no selected Bluetooth address (e.g., Wi-Fi-only startup), skip instead of guessing.
+- Wired-session profile suppression is not included in this timing revision and must be wired separately.
+- Changes are committed but **not built or tested on hardware**.
