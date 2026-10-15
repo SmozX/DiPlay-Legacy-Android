@@ -383,6 +383,8 @@ class CarPlayController(
                 }
             }
             if (activeSession == null) {
+                audioGuardRenderedSession = null
+                audioGuardCompletedSession = null
                 audioProfileExecutor.execute { audioProfileGuard.restore(::debugLog) }
             }
             debugLog("AirPlay session ended peer=${session.host}")
@@ -1869,10 +1871,6 @@ class CarPlayController(
                     onStatus(CarPlayStatus.WirelessActive, generation)
                 }
                 maybeScheduleAudioProfileGuard(generation)
-                synchronized(wirelessResourceLock) {
-                    // Existing handoff callback remains authoritative for session status.
-                    Unit
-                }
             },
             "xcertplay-wireless-handoff",
         ).apply {
