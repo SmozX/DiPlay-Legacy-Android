@@ -24,7 +24,7 @@ internal class CarPlayAudioProfileGuard(private val context: Context) {
         private const val PREFS = "diplay_audio_profile_guard"
         private const val ENABLED = "enabled"
         fun enabled(context: Context): Boolean =
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ENABLED, false)
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ENABLED, true)
         fun setEnabled(context: Context, enabled: Boolean) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().putBoolean(ENABLED, enabled).apply()
