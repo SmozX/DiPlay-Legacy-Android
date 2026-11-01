@@ -65,21 +65,28 @@ class HostapdHotspotManager(
      * not kill the unit's own processes or take wlan0 down.
      */
     @Volatile
+    /** Issues #330/#348: pause inside the failure-path radio reload cycle. */
+    private val wifiReloadSettleMillis = 1_000L
+
     private var touchedSystem = false
 
     override fun start(timeoutMillis: Long): WirelessHotspotInfo = try {
         startHotspot(timeoutMillis)
     } catch (error: Throwable) {
         // A failed or cancelled start must not leave hostapd/dnsmasq running
-        // or the passphrase-bearing config on disk. It must NOT, however,
-        // touch the interface or the radio on the way out (issues #330/#348):
-        // on the affected Honda firmware, a failure teardown that downs
-        // wlan0 / disables Wi-Fi leaves the interface in a state where no
-        // later bind succeeds until the head unit reboots — proven by the
-        // reporter's control experiment (after a failed current-version
-        // start, even 0.2.97 could not bind until a reboot) and independently
-        // reported by the original backend contributor on a Civic. The full
-        // state restoration stays with close(), where the stop is deliberate.
+        // or the passphrase-bearing config on disk, and it must never leave
+        // the interface downed or the radio disabled behind it (issues
+        // #330/#348): on the affected Honda firmware, a failure teardown
+        // that downs wlan0 / disables Wi-Fi leaves the interface in a state
+        // where no later bind succeeds until the head unit reboots — proven
+        // by the reporter's control experiment (after a failed
+        // current-version start, even 0.2.97 could not bind until a
+        // reboot). Killing the daemons alone is not enough either: the
+        // contributor's Civic testing shows the residue sits in the
+        // driver's runtime state and only a radio reload flushes it, so
+        // the failure teardown cycles Wi-Fi once and leaves it on, freshly
+        // loaded. The full state restoration stays with close(), where
+        // the stop is deliberate.
         teardown(restoreInterfaceState = false)
         throw error
     }
@@ -412,13 +419,20 @@ class HostapdHotspotManager(
                     RootShell.run("svc wifi disable", 10_000)
                 }
             } else {
-                // Failure path (issues #330/#348): kill only this backend's
-                // daemons and remove the generated files; leave the interface
-                // up and the radio exactly as they are (see start()).
+                // Failure path (issues #330/#348): kill this backend's
+                // daemons and remove the generated files, never down the
+                // interface — then reload the radio (disable, brief pause,
+                // enable) so the driver drops whatever AP-mode residue the
+                // failed bind left in its runtime state, and leave it on:
+                // that freshly loaded state is what the next start binds
+                // against. See start() for the field evidence.
                 RootShell.run(
                     HostapdConfig.killStaleScript() + "; " + HostapdConfig.removeGeneratedFilesScript(),
                     10_000,
                 )
+                RootShell.run("svc wifi disable", 10_000)
+                runCatching { Thread.sleep(wifiReloadSettleMillis) }
+                RootShell.run("svc wifi enable", 10_000)
             }
         }
         started = false
