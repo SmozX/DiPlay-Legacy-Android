@@ -1,3 +1,10 @@
+# DiPlay 0.3.12 — 2026-11-01
+
+- Reload the radio in hotspot failure teardown (#330, #348): cycle Wi-Fi once (disable, 1s settle, enable) and leave it on during failed hostapd teardown, flushing driver AP-mode runtime residue so subsequent start attempts bind without a reboot.
+- Move reload settle constant below touchedSystem volatile annotation (#330, #348): preserve clean volatile semantics on the lifecycle flag.
+
+See [v0.3.12 release notes](docs/RELEASE-NOTES-0.3.12.md) for details.
+
 # DiPlay 0.3.11 — 2026-11-01
 
 - Do not rebuild picture on unconfirmed reverse exit (#315, #363): add a 600ms focus-confirmation delay and cancellation on re-engagement, preventing flapped CAN broadcasts from displacing the camera view mid-manoeuvre.
