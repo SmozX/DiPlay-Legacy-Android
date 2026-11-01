@@ -65,10 +65,10 @@ class HostapdHotspotManager(
      * not kill the unit's own processes or take wlan0 down.
      */
     @Volatile
+    private var touchedSystem = false
+
     /** Issues #330/#348: pause inside the failure-path radio reload cycle. */
     private val wifiReloadSettleMillis = 1_000L
-
-    private var touchedSystem = false
 
     override fun start(timeoutMillis: Long): WirelessHotspotInfo = try {
         startHotspot(timeoutMillis)
