@@ -2997,8 +2997,16 @@ class CarPlayController(
     }
 
     private fun onIphoneDetached(device: UsbDevice) {
+        val ncm = wiredNcm
+        val session = wiredUsbSession
+        val ncmInAgo = ncm?.bulkInSuccessAgoMs ?: -1L
+        val ncmOutAgo = ncm?.bulkOutSuccessAgoMs ?: -1L
+        val ncmSummary = ncm?.writeSummary ?: "none"
+        val muxInAgo = session?.readSuccessAgoMs ?: -1L
+        val muxOutAgo = session?.writeSuccessAgoMs ?: -1L
         debugLog(
-            "wired USB detached: vid=0x${device.vendorId.toString(16)} pid=0x${device.productId.toString(16)} dev=${device.deviceName}",
+            "wired USB detached: vid=0x${device.vendorId.toString(16)} pid=0x${device.productId.toString(16)} dev=${device.deviceName} " +
+                "lastMuxIn=${muxInAgo}ms lastMuxOut=${muxOutAgo}ms lastNcmIn=${ncmInAgo}ms lastNcmOut=${ncmOutAgo}ms ncmWrite=[$ncmSummary]",
         )
         if (closed) return
         when (phase) {

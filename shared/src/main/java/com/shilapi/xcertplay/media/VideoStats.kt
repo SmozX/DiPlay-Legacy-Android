@@ -22,6 +22,9 @@ internal class VideoStats(
     private var late = 0
     private var pacingDelayNanos = 0L
     private var lastDegenerateRecoveryNs = 0L
+    private var lastRenderedNs = 0L
+    val lastArrivalMsAgo: Long get() = if (lastArrivalNs == 0L) -1L else (nanoTime() - lastArrivalNs) / 1_000_000
+    val lastRenderedMsAgo: Long get() = if (lastRenderedNs == 0L) -1L else (nanoTime() - lastRenderedNs) / 1_000_000
 
     @Synchronized fun reset() {
         windowStartNs = nanoTime()
@@ -36,6 +39,7 @@ internal class VideoStats(
         decodeSamples = 0
         late = 0
         lastDegenerateRecoveryNs = 0L
+        lastRenderedNs = 0L
     }
 
     @Synchronized fun onReceived(size: Int) {
@@ -54,7 +58,10 @@ internal class VideoStats(
         bytes += size
     }
 
-    @Synchronized fun onRendered() { rendered++ }
+    @Synchronized fun onRendered() {
+        rendered++
+        lastRenderedNs = nanoTime()
+    }
 
     @Synchronized fun onRecovery() { recoveries++ }
 
@@ -102,7 +109,18 @@ internal class VideoStats(
         val elapsedNs = now - windowStartNs
         if (elapsedNs < WINDOW_NS) return null
         val seconds = elapsedNs / 1e9
-        if (received == 0 && touchSamples == 0) { windowStartNs = now; return null }
+        if (received == 0 && touchSamples == 0) {
+            if (lastArrivalNs != 0L) {
+                val rxAgoMs = (now - lastArrivalNs) / 1_000_000
+                val shownAgoMs = if (lastRenderedNs != 0L) (now - lastRenderedNs) / 1_000_000 else -1L
+                val line = "video stats$label idle rx=0.0fps shown=0.0fps lastRx=${rxAgoMs}ms ago lastShown=${shownAgoMs}ms ago"
+                Log.i(TAG, line)
+                windowStartNs = now
+                return line
+            }
+            windowStartNs = now
+            return null
+        }
         val touchAvgMs = if (touchSamples == 0) -1 else touchLatencySumNs / touchSamples / 1_000_000
         val line = ("video stats$label rx=%.1ffps shown=%.1ffps maxGap=%dms kbps=%d recoveries=%d " +
             "touch2frame avg=%dms max=%dms n=%d touchSendMax=%dms").format(

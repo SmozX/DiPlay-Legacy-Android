@@ -32,7 +32,7 @@ internal class SharedUsbDeviceConnection private constructor(
     ): Int = connection.controlTransfer(requestType, request, value, index, buffer, length, timeoutMillis)
 
     override fun bulkTransfer(endpoint: android.hardware.usb.UsbEndpoint, buffer: ByteArray, length: Int, timeoutMillis: Int): Int =
-        connection.bulkTransfer(endpoint, buffer, length, timeoutMillis)
+        bulkTransfer(endpoint, buffer, 0, length, timeoutMillis)
 
     override fun bulkTransfer(
         endpoint: android.hardware.usb.UsbEndpoint, buffer: ByteArray, offset: Int, length: Int, timeoutMillis: Int,
@@ -72,7 +72,13 @@ internal class SharedUsbDeviceConnection private constructor(
         connection.releaseInterface(usbInterface)
 
     override fun setInterface(usbInterface: android.hardware.usb.UsbInterface): Boolean =
-        connection.setInterface(usbInterface)
+        if (com.shilapi.xcertplay.compat.realSdkInt() >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                connection.setInterface(usbInterface)
+            } catch (_: NoSuchMethodError) {
+                false
+            }
+        } else false
 
     override fun queue(request: UsbRequest, buffer: ByteBuffer): Boolean {
         completions.register(request)

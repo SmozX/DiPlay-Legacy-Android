@@ -57,11 +57,18 @@ class NcmUsbBridge internal constructor(
     private val writeWatchdogFired = AtomicBoolean(false)
     private var inboundFrameSeen = false
     private var consecutiveWriteFailures = 0
-    /** Issue #352-Q4: bulk-OUT queue-vs-wire split (frames in, chunks out, bytes out). */
+    /** Issue #352-Q4 & #368: bulk-OUT queue-vs-wire split (frames in, chunks out, bytes out). */
     private var ncmWriteEnqueuedFrames = 0
     private var ncmWriteSubmittedChunks = 0
     private var ncmWriteCompletedChunks = 0
     private var ncmWriteSuccessBytes = 0
+    @Volatile var lastBulkInSuccessNs = 0L
+        private set
+    @Volatile var lastBulkOutSuccessNs = 0L
+        private set
+    val bulkInSuccessAgoMs: Long get() = if (lastBulkInSuccessNs == 0L) -1L else (System.nanoTime() - lastBulkInSuccessNs) / 1_000_000
+    val bulkOutSuccessAgoMs: Long get() = if (lastBulkOutSuccessNs == 0L) -1L else (System.nanoTime() - lastBulkOutSuccessNs) / 1_000_000
+    val writeSummary: String get() = "enqueued=$ncmWriteEnqueuedFrames submitted=$ncmWriteSubmittedChunks completed=$ncmWriteCompletedChunks bytes=$ncmWriteSuccessBytes"
     /** Issue #279: the data-interface reset is attempted once per failure run. */
     private var interfaceResetAttempted = false
     private var interfaceReclaimAttempted = false
@@ -116,6 +123,7 @@ class NcmUsbBridge internal constructor(
                 ncmWriteSubmittedChunks++
                 val written = sharedConnection.bulkTransfer(outEndpoint, block, offset, count, timeout)
                 if (written > 0) {
+                    lastBulkOutSuccessNs = System.nanoTime()
                     ncmWriteCompletedChunks++
                     ncmWriteSuccessBytes += written
                     return@writeUsbChunks written
@@ -130,6 +138,7 @@ class NcmUsbBridge internal constructor(
                 if (failedAfterNanos < timeout.toLong() * SLOW_FAILURE_NANOS_PER_MILLIS) {
                     val probed = sharedConnection.bulkTransferErrno(outEndpoint, block, offset, count, timeout)
                     if (probed > 0) {
+                        lastBulkOutSuccessNs = System.nanoTime()
                         ncmWriteCompletedChunks++
                         ncmWriteSuccessBytes += probed
                         return@writeUsbChunks probed
@@ -523,6 +532,7 @@ class NcmUsbBridge internal constructor(
             readQueued = false
             val transferred = directReadBuffer.position()
             if (transferred <= 0) return null
+            lastBulkInSuccessNs = System.nanoTime()
             directReadBuffer.flip()
             directReadBuffer.get(readBuffer, 0, transferred)
             return transferred
@@ -539,6 +549,7 @@ class NcmUsbBridge internal constructor(
         return try {
             sharedConnection.bulkTransfer(inEndpoint, readBuffer, readBuffer.size, timeout)
                 .takeIf { it > 0 }
+                ?.also { lastBulkInSuccessNs = System.nanoTime() }
         } catch (error: RuntimeException) {
             throw failSession("NCM synchronous read failed", error)
         }

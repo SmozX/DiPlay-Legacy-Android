@@ -1,4 +1,4 @@
-﻿package com.shilapi.xcertplay.compat
+package com.shilapi.xcertplay.compat
 
 import android.os.Build
 
@@ -12,9 +12,22 @@ import android.os.Build
  * that don't exist on the real 4.4 framework, or attempting per-app VPN that the old
  * netd rejects).
  */
-fun realSdkInt(): Int {
-    val reported = Build.VERSION.SDK_INT
-    val release = Build.VERSION.RELEASE ?: return reported
+fun realSdkInt(): Int = realSdkInt(Build.VERSION.SDK_INT, Build.VERSION.RELEASE)
+
+internal fun realSdkInt(reported: Int, release: String?): Int {
+    if (release == null) return reported
+    // Map 4.1.x release to API 16.
+    if (release.startsWith("4.1") && reported > Build.VERSION_CODES.JELLY_BEAN) {
+        return Build.VERSION_CODES.JELLY_BEAN
+    }
+    // Map 4.2.x release to API 17.
+    if (release.startsWith("4.2") && reported > Build.VERSION_CODES.JELLY_BEAN_MR1) {
+        return Build.VERSION_CODES.JELLY_BEAN_MR1
+    }
+    // Map 4.3.x release to API 18.
+    if (release.startsWith("4.3") && reported > Build.VERSION_CODES.JELLY_BEAN_MR2) {
+        return Build.VERSION_CODES.JELLY_BEAN_MR2
+    }
     // Map 4.4.x release to API 19 regardless of what SDK_INT claims.
     if (release.startsWith("4.4") && reported > Build.VERSION_CODES.KITKAT) {
         return Build.VERSION_CODES.KITKAT
@@ -32,4 +45,3 @@ fun realSdkInt(): Int {
     }
     return reported
 }
-

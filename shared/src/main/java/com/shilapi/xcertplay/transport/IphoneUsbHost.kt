@@ -563,6 +563,12 @@ class Iap2UsbSession internal constructor(
         usbTransferSize(realSdkInt(), USBMUX_READ_CHUNK_BYTES)
     )
     private val syncReadBuffer = ByteArray(USBFS_BULK_URB_CEILING_BYTES)
+    @Volatile var lastReadSuccessNs = 0L
+        private set
+    @Volatile var lastWriteSuccessNs = 0L
+        private set
+    val readSuccessAgoMs: Long get() = if (lastReadSuccessNs == 0L) -1L else (System.nanoTime() - lastReadSuccessNs) / 1_000_000
+    val writeSuccessAgoMs: Long get() = if (lastWriteSuccessNs == 0L) -1L else (System.nanoTime() - lastWriteSuccessNs) / 1_000_000
     private val readQueuePolicy = UsbReadQueuePolicy(
         if (realSdkInt() < Build.VERSION_CODES.P) USBFS_BULK_URB_CEILING_BYTES else Int.MAX_VALUE,
     )
@@ -577,6 +583,9 @@ class Iap2UsbSession internal constructor(
         if (data.isEmpty()) return@synchronized
         val transferred = writeUsbChunks(data.size, realSdkInt(), timeoutMillis) { offset, count, timeout ->
             sharedConnection.bulkTransfer(outEndpoint, data, offset, count, timeout)
+        }
+        if (transferred == data.size) {
+            lastWriteSuccessNs = System.nanoTime()
         }
         if (transferred != data.size) {
             // A -1 bulk transfer means the device stopped responding (wedged USB stack,
@@ -671,6 +680,7 @@ class Iap2UsbSession internal constructor(
             readQueued = false
             val position = directReadBuffer.position()
             if (position <= 0) return@synchronized null
+            lastReadSuccessNs = System.nanoTime()
             return@synchronized ByteArray(position).also {
                 directReadBuffer.flip()
                 directReadBuffer.get(it)
@@ -748,7 +758,10 @@ class Iap2UsbSession internal constructor(
             } catch (error: RuntimeException) {
                 throw failSession("USBMUX read failed", error)
             }
-            if (transferred > 0) return syncReadBuffer.copyOf(transferred)
+            if (transferred > 0) {
+                lastReadSuccessNs = System.nanoTime()
+                return syncReadBuffer.copyOf(transferred)
+            }
             if (transferred <= 0) {
                 if (System.nanoTime() >= deadline) return null
             }

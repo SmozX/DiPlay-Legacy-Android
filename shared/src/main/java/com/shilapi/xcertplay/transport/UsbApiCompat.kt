@@ -28,9 +28,12 @@ internal fun usbTransferSize(sdk: Int, requested: Int): Int =
     if (sdk < 28) minOf(requested, 16 * 1024) else requested
 
 /**
- * Issue #213: the 5-arg bulkTransfer(UsbEndpoint, ByteArray, Int, Int, Int) overload
+ * Issue #213 & #371: the 5-arg bulkTransfer(UsbEndpoint, ByteArray, Int, Int, Int) overload
  * was added in API 18; on API 17 it throws NoSuchMethodError. Fall back to the 4-arg
  * overload, copying the slice when offset > 0.
+ *
+ * Some head units (e.g. AC8317 / Zebra) fake SDK_INT or lack the 5-arg overload in their
+ * framework build; catch NoSuchMethodError and safely fallback to the 4-arg overload.
  */
 internal fun bulkTransferCompat(
     connection: UsbDeviceConnection,
@@ -39,11 +42,16 @@ internal fun bulkTransferCompat(
     offset: Int,
     count: Int,
     timeout: Int,
-): Int = if (realSdkInt() >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-    connection.bulkTransfer(endpoint, data, offset, count, timeout)
-} else {
+): Int {
+    if (realSdkInt() >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+        try {
+            return connection.bulkTransfer(endpoint, data, offset, count, timeout)
+        } catch (_: NoSuchMethodError) {
+            // Fall through to 4-arg overload on older/faked frameworks
+        }
+    }
     val slice = if (offset == 0 && count == data.size) data else data.copyOfRange(offset, offset + count)
-    connection.bulkTransfer(endpoint, slice, slice.size, timeout)
+    return connection.bulkTransfer(endpoint, slice, slice.size, timeout)
 }
 
 /** Preserve the full USBMUX/NCM byte stream when old Android truncates large bulk writes. */
@@ -111,9 +119,15 @@ internal fun selectUsbConfiguration(
     ) >= 0
 }
 
-internal fun selectUsbInterface(connection: UsbDeviceConnection, usbInterface: UsbInterface): Boolean =
-    if (realSdkInt() >= Build.VERSION_CODES.LOLLIPOP) connection.setInterface(usbInterface)
-    else connection.controlTransfer(
+internal fun selectUsbInterface(connection: UsbDeviceConnection, usbInterface: UsbInterface): Boolean {
+    if (realSdkInt() >= Build.VERSION_CODES.LOLLIPOP) {
+        try {
+            return connection.setInterface(usbInterface)
+        } catch (_: NoSuchMethodError) {
+            // Fall through to control transfer
+        }
+    }
+    return connection.controlTransfer(
         UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_STANDARD or 1,
         11,
         IphoneCarPlayConfiguration.alternateSetting(usbInterface),
@@ -122,6 +136,7 @@ internal fun selectUsbInterface(connection: UsbDeviceConnection, usbInterface: U
         0,
         1_000,
     ) >= 0
+}
 
 @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
 private fun selectUsbConfiguration21(connection: UsbDeviceConnection, value: Any?): Boolean =
@@ -177,4 +192,3 @@ private const val USB_RECIP_ENDPOINT = 0x02
 private const val USB_REQUEST_CLEAR_FEATURE = 1
 private const val USB_FEATURE_ENDPOINT_HALT = 0
 private const val USB_HALT_CLEAR_TIMEOUT_MILLIS = 1_000
-
