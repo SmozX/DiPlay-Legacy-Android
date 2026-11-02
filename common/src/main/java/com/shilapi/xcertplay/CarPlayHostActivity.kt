@@ -439,6 +439,7 @@ class CarPlayHostActivity : ComponentActivity() {
             return@Runnable
         }
         reverseCameraActive = false
+        fallbackVideoView?.visibility = View.VISIBLE
         sink?.refreshPicture(SCREEN_TYPE_MAIN)
         reapplyVideoLayout()
         fallbackVideoView?.invalidate()
@@ -468,6 +469,7 @@ class CarPlayHostActivity : ComponentActivity() {
             return@Runnable
         }
         reverseCameraActive = false
+        fallbackVideoView?.visibility = View.VISIBLE
         sink?.resumeVideoFromReverse(SCREEN_TYPE_MAIN)
         reapplyVideoLayout()
         fallbackVideoView?.invalidate()
@@ -491,6 +493,10 @@ class CarPlayHostActivity : ComponentActivity() {
         legacyReverseActive = true
         appendLog("Display: reverse camera started by broadcast source=$source; legacy cold start: decoder released")
         sink?.suspendVideoForReverse(SCREEN_TYPE_MAIN)
+        // Issue #315: on legacy chips/head units (e.g. PF8227/MTK 8227L), active SurfaceView hardware overlay
+        // collides with the system reverse camera and dynamic trajectory layer in the GPU/hardware composer.
+        // Hide the SurfaceView overlay during reverse so the car camera gets dedicated layer ownership.
+        fallbackVideoView?.visibility = View.INVISIBLE
     }
 
     private fun handleReverseCameraExit(source: String) {

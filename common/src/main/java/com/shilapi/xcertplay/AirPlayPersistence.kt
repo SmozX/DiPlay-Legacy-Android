@@ -272,10 +272,14 @@ object AirPlayPersistence {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(KEY_AUDIO_FOCUS_AUTO_YIELD, true)
 
-    /** Issue #315: legacy-chip reverse cold start; off by default, takes effect on the next reverse. */
-    fun loadLegacyReverseColdStart(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_LEGACY_REVERSE_COLD_START, false)
+    /** Issue #315: legacy-chip reverse cold start; default on for legacy head units, takes effect on the next reverse. */
+    fun loadLegacyReverseColdStart(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.contains(KEY_LEGACY_REVERSE_COLD_START)) {
+            return prefs.getBoolean(KEY_LEGACY_REVERSE_COLD_START, false)
+        }
+        return isLegacyReverseHeadUnit()
+    }
 
     fun saveLegacyReverseColdStart(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -830,6 +834,21 @@ object AirPlayPersistence {
         val manufacturer = Build.MANUFACTURER.lowercase(java.util.Locale.US)
         return hardware.contains("sun8i") || hardware.contains("allwinner") ||
             board.contains("exdroid") || brand.contains("allwinner") || manufacturer.contains("allwinner")
+    }
+
+    /** Issue #315: detect legacy SoCs (MTK 8227L, PF8227, Allwinner, Rockchip, Android 4.x/5.x) prone to reverse video deadlock. */
+    fun isLegacyReverseHeadUnit(): Boolean {
+        if (realSdkInt() <= 19) return true
+        val hardware = Build.HARDWARE.lowercase(java.util.Locale.US)
+        val board = Build.BOARD.lowercase(java.util.Locale.US)
+        val display = Build.DISPLAY.lowercase(java.util.Locale.US)
+        val brand = Build.BRAND.lowercase(java.util.Locale.US)
+        val manufacturer = Build.MANUFACTURER.lowercase(java.util.Locale.US)
+        val product = Build.PRODUCT.lowercase(java.util.Locale.US)
+        val device = Build.DEVICE.lowercase(java.util.Locale.US)
+        val tokens = listOf(hardware, board, display, brand, manufacturer, product, device)
+        fun anyMatches(vararg keys: String) = tokens.any { t -> keys.any { k -> t.contains(k) } }
+        return anyMatches("8227", "mt8227", "ac8227", "pf8227", "xy.android", "yecon", "sun8i", "t3", "rk3066", "rk3188", "px3")
     }
 
     /** Compatibility microphone mode for calls on Allwinner / custom ROM head units; applies at reconnect. */
