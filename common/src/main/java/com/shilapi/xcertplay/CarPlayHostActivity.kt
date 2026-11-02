@@ -152,6 +152,24 @@ class CarPlayHostActivity : ComponentActivity() {
         )
     }
     private var startupRetryStopped = false
+
+    /**
+     * Releases the automatic-retry stop (issues #359/#275/#305): the wired
+     * failure counters restart and the retry button hides. Only deliberate
+     * or physical events call this — the Retry button, a fresh USB attach
+     * (the replug the stop messages ask for), a transport switch, or a
+     * session actually activating. Status reports and waiting states must
+     * never release it implicitly: issue #359 showed the stop being walked
+     * around because restarts reached the stack without ever consulting
+     * the latch.
+     */
+    private fun clearStartupRetryStop() {
+        startupRetryStopped = false
+        wiredNoTcpFailures = 0
+        wiredUsbBusyFailures = 0
+        wiredUsbStallFailures = 0
+        startupRetryButton?.visibility = View.GONE
+    }
     private var startupRetryButton: View? = null
     private var startupFailureGeneration = -1
     private lateinit var airPlayIdentity: AirPlayIdentity
@@ -1163,6 +1181,9 @@ class CarPlayHostActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (isIphoneUsbAttachment(intent)) {
+            // A fresh attach is the physical replug the stop messages ask
+            // for (issue #359): the stopped episode is over.
+            clearStartupRetryStop()
             if (wirelessEnabled) {
                 if (menuOpen) cancelSettingsEdits()
                 AirPlayPersistence.saveWirelessEnabled(this, false)
@@ -1260,6 +1281,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     }
                 }
                 if (controller != null) {
+                    clearStartupRetryStop()
                     restartCarPlay("switching to ${if (wirelessEnabled) "wireless" else "USB"}")
                 }
                 requestStartupPrerequisites()
@@ -1933,12 +1955,8 @@ class CarPlayHostActivity : ComponentActivity() {
                 if (!CarPlayBackgroundSession.isOwner(this@CarPlayHostActivity) ||
                     shuttingDown.get() || menuOpen || handshakeResetInProgress) return@setOnClickListener
                 startupRetryBudget.manualRetry()
-                startupRetryStopped = false
                 reconnectAttempts = 0
-                wiredNoTcpFailures = 0
-                wiredUsbBusyFailures = 0
-                wiredUsbStallFailures = 0
-                visibility = View.GONE
+                clearStartupRetryStop()
                 restartCarPlay(getString(R.string.connecting_to_your_iphone))
             }
             startupRetryButton = this
@@ -4646,9 +4664,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     activeAirPlaySession = session
                     CarPlayBackgroundSession.active = true
                     reconnectAttempts = 0
-                    wiredNoTcpFailures = 0
-                    wiredUsbBusyFailures = 0
-                    wiredUsbStallFailures = 0
+                    clearStartupRetryStop()
                     logThemeState(ThemeModeDiagnostics.Source.SESSION_ACTIVE, resources.configuration)
                     syncAirPlayDarkMode(ThemeModeDiagnostics.Source.SESSION_ACTIVE)
                     if (menuOpen) return@runOnUiThread
@@ -5522,6 +5538,7 @@ class CarPlayHostActivity : ComponentActivity() {
             shuttingDown.get() ||
             menuOpen ||
             handshakeResetInProgress ||
+            startupRetryStopped ||
             pendingDisplaySize != null ||
             controller != null
         ) {
@@ -5690,6 +5707,14 @@ class CarPlayHostActivity : ComponentActivity() {
     private fun restartCarPlay(reason: String) {
         if (!CarPlayBackgroundSession.isOwner(this)) return
         if (shuttingDown.get() || menuOpen || handshakeResetInProgress) return
+        // Issue #359: the stop is a hard gate for this connection episode.
+        // Automatic restart paths (display changes, deferred recoveries,
+        // controller callbacks) must not rebuild the stack behind it; only
+        // clearStartupRetryStop() releases it.
+        if (startupRetryStopped) {
+            appendLog("restart suppressed while automatic retry is stopped: $reason")
+            return
+        }
         val size = activeDisplaySize ?: return
         startupRetryBudget.disconnected()
         startupRetryButton?.visibility = View.GONE
