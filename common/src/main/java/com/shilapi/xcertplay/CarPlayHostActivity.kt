@@ -5378,8 +5378,9 @@ class CarPlayHostActivity : ComponentActivity() {
             // transitional smaller size; fitting to it would setFixedSize the new
             // Surface back down and the settle listener would keep re-asserting
             // the small size, so the loop ended small instead of converging.
-            if (dockRefrontAttempts > 0 && surfaceReaddBounds != null &&
-                bounds.height >= surfaceReaddBounds.height) {
+            val readdBounds = surfaceReaddBounds
+            if (dockRefrontAttempts > 0 && readdBounds != null &&
+                bounds.height >= readdBounds.height) {
                 appendLog("Display: full height restored after task re-front (attempts=$dockRefrontAttempts)")
                 dockRefrontAttempts = 0
             }
