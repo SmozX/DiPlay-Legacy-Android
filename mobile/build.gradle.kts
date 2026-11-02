@@ -1,4 +1,4 @@
-﻿import com.android.build.gradle.internal.tasks.L8DexDesugarLibTask
+import com.android.build.gradle.internal.tasks.L8DexDesugarLibTask
 import java.security.KeyStore
 import java.security.MessageDigest
 import org.gradle.api.DefaultTask
@@ -33,8 +33,8 @@ android {
         multiDexEnabled = true
         multiDexKeepProguard = file("multidex-config.pro")
         testInstrumentationRunner = "com.shilapi.xcertplay.T3LegacyInstrumentation"
-        versionCode = 132
-        versionName = "0.3.12"
+        versionCode = 133
+        versionName = "0.3.13"
 
     }
 

@@ -1,3 +1,10 @@
+# DiPlay 0.3.13 — 2026-11-02
+
+- Auto-enable reverse cold start and yield hardware overlay layer on legacy units (#315): detect legacy platforms (PF8227/MTK 8227L, Allwinner, Rockchip, Android 4.x/API <= 19) to auto-enable delayed reverse cold start, and temporarily hide SurfaceView hardware overlay during reverse to eliminate GPU layer collisions with the reverse camera.
+- Fix API 17 UsbDeviceConnection.bulkTransfer NoSuchMethodError crash (#371, #368): fallback to 4-parameter overload when 5-parameter bulkTransfer is unavailable on Android 4.2.
+- Hard-gate automatic restarts while startup retry is stopped (#359): prevent background re-triggers from circumventing the connection retry budget latch until manual retry or USB replug.
+
+See [v0.3.13 release notes](docs/RELEASE-NOTES-0.3.13.md) for details.
 # DiPlay 0.3.12 — 2026-11-01
 
 - Reload the radio in hotspot failure teardown (#330, #348): cycle Wi-Fi once (disable, 1s settle, enable) and leave it on during failed hostapd teardown, flushing driver AP-mode runtime residue so subsequent start attempts bind without a reboot.
