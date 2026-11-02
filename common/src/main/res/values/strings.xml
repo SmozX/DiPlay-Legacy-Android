@@ -827,6 +827,8 @@
     <string name="settings_telephony_downlink_via_music_description">Route the call downlink through the music stream instead of the telephony stream, while call mode and the microphone uplink stay unchanged. Use this only if the call downlink is silent on the telephony stream while media audio works. Applies at the next connection.</string>
     <string name="settings_announcement_duck_media">Duck media for announcements (experimental)</string>
     <string name="settings_announcement_duck_media_description">While navigation, assistant or call audio is actually playing, lower the media volume inside DiPlay and restore it about a second after the announcement ends. It only affects sound that DiPlay itself plays, and it never changes the system volume. Applies at the next connection.</string>
+    <string name="settings_dock_bar_refront">Bring task to front to dismiss the dock bar (experimental)</string>
+    <string name="settings_dock_bar_refront_description">Some launchers keep a dock bar over the CarPlay picture, squeezing the window so the picture shrinks with black borders. When DiPlay detects that squeeze, it brings its own task to the front, which makes launchers of this kind drop the bar. The CarPlay screen itself never changes. Applies at the next connection.</string>
     <string name="settings_hostapd_channel">Hotspot channel</string>
     <string name="settings_hostapd_channel_description">2.4 GHz only (channels 1–13). Channel 1 is the most compatible.</string>
     <string name="hotspot_mode_hostapd">Root hotspot (hostapd)</string>

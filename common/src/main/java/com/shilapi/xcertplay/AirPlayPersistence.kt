@@ -83,6 +83,7 @@ object AirPlayPersistence {
     private const val KEY_CARPLAY_AUTO_DISCONNECT_BT = "carplay_auto_disconnect_bt"
     private const val KEY_TELEPHONY_DOWNLINK_VIA_MUSIC = "telephony_downlink_via_music"
     private const val KEY_ANNOUNCEMENT_DUCK_MEDIA = "announcement_duck_media"
+    private const val KEY_DOCK_BAR_REFRONT = "dock_bar_refront"
     private const val KEY_DEBUG_LOGS_ENABLED = "debug_logs_enabled"
     private const val KEY_MANUFACTURER = "manufacturer"
     private const val KEY_MODEL = "model"
@@ -771,6 +772,14 @@ object AirPlayPersistence {
 
     fun saveAnnouncementDuckMedia(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ANNOUNCEMENT_DUCK_MEDIA, enabled).apply()
+    }
+
+    /** Issue #363: re-front the task to dismiss a launcher dock bar (experimental display). */
+    fun loadDockBarRefront(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_DOCK_BAR_REFRONT, false)
+
+    fun saveDockBarRefront(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_DOCK_BAR_REFRONT, enabled).apply()
     }
 
     fun loadHostapdSsid(context: Context): String =

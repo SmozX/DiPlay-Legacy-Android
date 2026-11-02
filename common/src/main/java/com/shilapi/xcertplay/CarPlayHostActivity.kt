@@ -693,6 +693,9 @@ class CarPlayHostActivity : ComponentActivity() {
     private var carplayAutoDisconnectBt = false
     private var telephonyDownlinkViaMusic = false
     private var announcementDuckMedia = false
+    private var dockBarRefrontEnabled = false
+    private var dockRefrontAttempts = 0
+    private var dockRefrontLastAttemptMs = 0L
     private var awaitingVpnConsent = false
     private var vpnConsentLaunchElapsed = 0L
     private var vpnConsentInstantDenyCount = 0
@@ -1045,6 +1048,7 @@ class CarPlayHostActivity : ComponentActivity() {
         carplayAutoDisconnectBt = AirPlayPersistence.loadCarplayAutoDisconnectBt(this)
         telephonyDownlinkViaMusic = AirPlayPersistence.loadTelephonyDownlinkViaMusic(this)
         announcementDuckMedia = AirPlayPersistence.loadAnnouncementDuckMedia(this)
+        dockBarRefrontEnabled = AirPlayPersistence.loadDockBarRefront(this)
     }
 
     private fun requestStartupPrerequisites() {
@@ -5312,6 +5316,33 @@ class CarPlayHostActivity : ComponentActivity() {
      * not this — while reversing, the reverse flag is set and the video
      * view has already yielded the display surface.
      */
+    /**
+     * Issue #363: the reporter's discriminator proved the dock bar is
+     * dropped by task re-fronting, not by focus gain (focus returns after
+     * every reverse exit and the bar stays). Re-front our own task: the
+     * host is singleTask, so the start delivers onNewIntent to this very
+     * instance and re-fronts its task without ever leaving the CarPlay
+     * screen. Bounded per squeeze episode (3 attempts, 5 s apart) so a
+     * launcher that refuses is not fought forever; the episode resets
+     * when full height is restored.
+     */
+    private fun maybeRefrontForDockBar() {
+        if (!dockBarRefrontEnabled) return
+        if (activeAirPlaySession == null || menuOpen || shuttingDown.get() ||
+            handshakeResetInProgress || reverseCameraActive) return
+        val now = SystemClock.elapsedRealtime()
+        if (dockRefrontAttempts >= 3 || now - dockRefrontLastAttemptMs < 5_000L) return
+        dockRefrontAttempts += 1
+        dockRefrontLastAttemptMs = now
+        appendLog("Display: dock squeeze detected; bringing the CarPlay task to the front (attempt $dockRefrontAttempts)")
+        runCatching {
+            startActivity(
+                Intent(this, CarPlayHostActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
+            )
+        }.onFailure { appendLog("Display: task re-front failed: ${it.message}") }
+    }
+
     private fun isDockSqueezedShrink(bounds: CarPlaySurfaceBounds, viewWidth: Int, viewHeight: Int): Boolean {
         if (reverseCameraActive) return false
         val baseline = surfaceReaddBounds ?: return false
@@ -5347,6 +5378,11 @@ class CarPlayHostActivity : ComponentActivity() {
             // transitional smaller size; fitting to it would setFixedSize the new
             // Surface back down and the settle listener would keep re-asserting
             // the small size, so the loop ended small instead of converging.
+            if (dockRefrontAttempts > 0 && surfaceReaddBounds != null &&
+                bounds.height >= surfaceReaddBounds.height) {
+                appendLog("Display: full height restored after task re-front (attempts=$dockRefrontAttempts)")
+                dockRefrontAttempts = 0
+            }
             val transitionalShrink = fallbackVideoBounds != bounds && isTransitionalShrinkAfterReadd(bounds)
             if (transitionalShrink) {
                 appendLog(
@@ -5361,6 +5397,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     "Display: ignored dock-squeezed shrink to ${bounds.width}x${bounds.height}; " +
                         "keeping ${surfaceReaddBounds?.width}x${surfaceReaddBounds?.height}",
                 )
+                maybeRefrontForDockBar()
             }
             if (fallbackVideoBounds != bounds && !transitionalShrink && !dockSqueezedShrink) {
                 val previousBounds = fallbackVideoBounds

@@ -1508,6 +1508,17 @@ class DiPlayActivity : ComponentActivity() {
                 AirPlayPersistence.loadHarmanFullscreen(this)) { enabled ->
                 AirPlayPersistence.saveHarmanFullscreen(this, enabled)
             }
+            // Issue #363: on launchers that keep a dock bar over the
+            // picture, the reporter proved that bringing the app task to
+            // the front drops the bar without any desktop round-trip. When
+            // this is on, the host re-fronts its own task when it detects
+            // the squeeze. Applies at the next connection.
+            toggle(card, getString(R.string.settings_dock_bar_refront),
+                getString(R.string.settings_dock_bar_refront_description),
+                AirPlayPersistence.loadDockBarRefront(this)) {
+                AirPlayPersistence.saveDockBarRefront(this, it)
+                markReconnectNeeded()
+            }
             toggle(card, getString(R.string.split_screen_areas), getString(R.string.split_screen_areas_description),
                 SplitScreenSettings.enabled(this)) {
                 SplitScreenSettings.setEnabled(this, it)

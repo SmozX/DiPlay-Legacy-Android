@@ -711,6 +711,8 @@
     <string name="settings_telephony_downlink_via_music_description">Dirigir el audio descendente de la llamada por el flujo de música en lugar del flujo de telefonía, sin cambiar el modo de llamada ni el micrófono. Úsalo solo si el audio descendente de la llamada no se oye en el flujo de telefonía mientras el audio multimedia funciona. Se aplica en la próxima conexión.</string>
     <string name="settings_announcement_duck_media">Atenuar los medios durante los avisos (experimental)</string>
     <string name="settings_announcement_duck_media_description">Mientras suena de verdad el audio de navegación, del asistente o de una llamada, DiPlay baja el volumen de los medios internamente y lo restablece aproximadamente un segundo después de que termina el aviso. Solo afecta al sonido que reproduce el propio DiPlay y nunca cambia el volumen del sistema. Se aplica en la próxima conexión.</string>
+    <string name="settings_dock_bar_refront">Traer la tarea al frente para ocultar la barra inferior (experimental)</string>
+    <string name="settings_dock_bar_refront_description">Algunos lanzadores mantienen una barra inferior sobre la imagen de CarPlay, comprimen la ventana y la imagen se reduce con bordes negros. Cuando DiPlay detecta esa compresión, trae su propia tarea al frente y los lanzadores de este tipo retiran la barra. La pantalla de CarPlay no cambia. Se aplica en la próxima conexión.</string>
     <string name="settings_hostapd_channel">Canal del punto de acceso</string>
     <string name="settings_hostapd_channel_description">Solo 2,4 GHz (canales 1–13). El canal 1 es el más compatible.</string>
     <string name="hotspot_mode_hostapd">Punto de acceso root (hostapd)</string>

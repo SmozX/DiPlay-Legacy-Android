@@ -779,6 +779,8 @@
     <string name="settings_telephony_downlink_via_music_description">通話下行改走音樂流而不是通話流，通話模式和麥克風上行不變。僅當通話流下行無聲、而媒體音訊有聲時使用。下次連線時生效。</string>
     <string name="settings_announcement_duck_media">播報時壓低媒體音量（實驗性）</string>
     <string name="settings_announcement_duck_media_description">導航、語音助理或通話聲音實際播放時，在 DiPlay 內壓低媒體音量，播報結束後約一秒恢復。僅對 DiPlay 自己播放的聲音有效，不改變系統音量。下次連線時生效。</string>
+    <string name="settings_dock_bar_refront">置前任務收起底欄（實驗性）</string>
+    <string name="settings_dock_bar_refront_description">部分車機桌面會把底欄壓在 CarPlay 畫面上，視窗被壓矮、畫面縮小並出現黑邊。DiPlay 偵測到這種擠壓時，會把自己的任務置前，這類桌面會隨之收起底欄。CarPlay 介面本身不會切換。下次連線時生效。</string>
     <string name="settings_hostapd_channel">熱點頻道</string>
     <string name="settings_hostapd_channel_description">僅 2.4 GHz（頻道 1–13），頻道 1 相容性最好。</string>
     <string name="hotspot_mode_hostapd">Root 熱點（hostapd）</string>
