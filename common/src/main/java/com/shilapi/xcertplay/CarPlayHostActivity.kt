@@ -5319,12 +5319,17 @@ class CarPlayHostActivity : ComponentActivity() {
     /**
      * Issue #363: the reporter's discriminator proved the dock bar is
      * dropped by task re-fronting, not by focus gain (focus returns after
-     * every reverse exit and the bar stays). Re-front our own task: the
-     * host is singleTask, so the start delivers onNewIntent to this very
-     * instance and re-fronts its task without ever leaving the CarPlay
-     * screen. Bounded per squeeze episode (3 attempts, 5 s apart) so a
+     * every reverse exit and the bar stays). Bounded per squeeze episode
+     * (3 attempts, 5 s apart) so a
      * launcher that refuses is not fought forever; the episode resets
      * when full height is restored.
+     *
+     * The start target is the launcher activity with NEW_TASK — the exact
+     * form the reporter's manual test proved. The first implementation
+     * re-fronted this host itself with REORDER_TO_FRONT, which the
+     * v0.3.15 retest showed is a no-op: a singleTask host already at the
+     * top of its own task has nothing to reorder, only onNewIntent fires
+     * and the window layer never moves.
      */
     private fun maybeRefrontForDockBar() {
         if (!dockBarRefrontEnabled) return
@@ -5334,11 +5339,11 @@ class CarPlayHostActivity : ComponentActivity() {
         if (dockRefrontAttempts >= 3 || now - dockRefrontLastAttemptMs < 5_000L) return
         dockRefrontAttempts += 1
         dockRefrontLastAttemptMs = now
-        appendLog("Display: dock squeeze detected; bringing the CarPlay task to the front (attempt $dockRefrontAttempts)")
+        appendLog("Display: dock squeeze detected; bringing the app task to the front (attempt $dockRefrontAttempts)")
         runCatching {
             startActivity(
-                Intent(this, CarPlayHostActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
+                Intent(this, DiPlayActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         }.onFailure { appendLog("Display: task re-front failed: ${it.message}") }
     }
@@ -5348,9 +5353,12 @@ class CarPlayHostActivity : ComponentActivity() {
         val baseline = surfaceReaddBounds ?: return false
         if (bounds.width >= baseline.width || bounds.height >= baseline.height) return false
         if (viewHeight - bounds.height > 1) return false
-        val canvas = activeDisplaySize ?: return false
-        // The squeezed fit keeps the canvas aspect (within rounding).
-        return kotlin.math.abs(bounds.width * canvas.height - bounds.height * canvas.width) <= canvas.height
+        // The squeezed fit keeps the established aspect (within rounding).
+        // Compare against the baseline, not the current display size: a
+        // display-changed callback can rewrite the latter to the squeezed
+        // size before this layout pass runs, which made a canvas-referenced
+        // comparison fail and let the small size through (v0.3.15 retest).
+        return kotlin.math.abs(bounds.width * baseline.height - bounds.height * baseline.width) <= baseline.height
     }
 
     private fun updateVideoLayout(viewWidth: Int, viewHeight: Int) {
