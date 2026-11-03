@@ -128,13 +128,17 @@ static err_t ncm_linkoutput(struct netif *netif, struct pbuf *p) {
         jbyte *buf = (*env)->GetByteArrayElements(env, jframe, NULL);
         if (buf != NULL) {
             pbuf_copy_partial(p, buf, total_len, 0);
-            uint8_t header[21] = {0};
-            memcpy(header, buf, total_len < 21 ? (size_t)total_len : sizeof(header));
+            /* Issue #305: this runs per frame (hundreds per second at high
+             * bitrates); an unconditional log line plus its header copy is
+             * pure overhead on small-heap units. Sample it. */
+            if (ctx->stats_tx_frames % 300 == 0) {
+                uint8_t header[21] = {0};
+                memcpy(header, buf, total_len < 21 ? (size_t)total_len : sizeof(header));
+                LOGI("ncm_linkoutput sending frame len=%d proto=0x%02x%02x next=0x%02x",
+                     total_len, (unsigned char)header[12], (unsigned char)header[13],
+                     total_len >= 21 ? (unsigned char)header[20] : 0);
+            }
             (*env)->ReleaseByteArrayElements(env, jframe, buf, 0);
-
-            LOGI("ncm_linkoutput sending frame len=%d proto=0x%02x%02x next=0x%02x", 
-                 total_len, (unsigned char)header[12], (unsigned char)header[13],
-                 total_len >= 21 ? (unsigned char)header[20] : 0);
             (*env)->CallVoidMethod(env, ctx->bridge_obj_global, ctx->on_tx_frame_mid, jframe);
         }
         (*env)->DeleteLocalRef(env, jframe);
