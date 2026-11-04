@@ -29,6 +29,10 @@ class CarPlayControllerUsbServiceTest {
     private val controllers = mutableListOf<CarPlayController>()
     private val statuses = mutableListOf<CarPlayStatus>()
 
+    @org.junit.Before fun setUp() {
+        com.shilapi.xcertplay.bluetooth.CarPlayBluetoothManager.get(RuntimeEnvironment.getApplication())
+    }
+
     @After fun tearDown() {
         controllers.forEach { it.close(); assertTrue(it.awaitClosed(2_000)) }
         BydNavigationOutputs.endNow()
