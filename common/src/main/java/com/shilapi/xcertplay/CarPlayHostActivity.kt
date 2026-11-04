@@ -484,7 +484,7 @@ class CarPlayHostActivity : ComponentActivity() {
         legacyReverseResumeAttempts = 0
         if (!reverseCameraActive) {
             reverseCameraActive = true
-            reverseCameraActiveSinceMs = System.currentTimeMillis()
+            reverseCameraActiveSinceMs = SystemClock.elapsedRealtime()
             appendLog("Display: reverse camera started by broadcast source=$source")
         }
         if (!AirPlayPersistence.loadLegacyReverseColdStart(this)) return
@@ -1688,7 +1688,7 @@ class CarPlayHostActivity : ComponentActivity() {
             // post-exit restore runs the same work once the exit is real.
             // The age cap keeps a never-cleared flag (a missed exit
             // broadcast) from gating refreshes forever.
-            val reverseGateAgeMs = System.currentTimeMillis() - reverseCameraActiveSinceMs
+            val reverseGateAgeMs = SystemClock.elapsedRealtime() - reverseCameraActiveSinceMs
             if (reverseCameraActive && reverseGateAgeMs < REVERSE_ACTIVE_GATE_CAP_MILLIS) {
                 appendLog("Display: focus gained while reverse camera is active; fullscreen and picture refresh deferred to reverse exit")
             } else {
@@ -6330,12 +6330,15 @@ class CarPlayHostActivity : ComponentActivity() {
     private fun setConnectionStage(message: String, exact: Boolean = false) {
         latestStage = message
         stageStatusView?.text = if (exact) message else friendlyStage(message)
-        stageStartedAtMillis = System.currentTimeMillis()
+        // Monotonic, not wall clock: these units boot with unset RTCs
+        // (2018) that jump years when time syncs, and a wall-clock age
+        // turned that into a 278,984,999-second wait on issue #373.
+        stageStartedAtMillis = SystemClock.elapsedRealtime()
         val generation = ++stageWatchdogGeneration
         stageDiagnosticView?.text = "阶段已进入 · 0 秒"
         fun tick() {
             if (generation != stageWatchdogGeneration || shuttingDown.get()) return
-            val elapsed = ((System.currentTimeMillis() - stageStartedAtMillis) / 1000L).coerceAtLeast(0L)
+            val elapsed = ((SystemClock.elapsedRealtime() - stageStartedAtMillis) / 1000L).coerceAtLeast(0L)
             stageDiagnosticView?.text = if (elapsed >= 20L) {
                 "当前阶段已等待 ${elapsed} 秒 · 若持续不变，请拍摄此界面"
             } else {
