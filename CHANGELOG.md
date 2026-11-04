@@ -1,3 +1,12 @@
+# DiPlay 0.3.16 — 2026-11-04
+
+- Re-front via launcher activity and pin squeeze guard to baseline (#363): start DiPlayActivity with NEW_TASK to genuinely drop stubborn launcher dock bars, and check squeeze aspect against the established baseline to eliminate latched borders.
+- Advance bulk-out failure ladder on production stall in NCM relay (#305): add a 10s watchdog to advance the failure ladder and trigger interface re-claim when transmission wedges, avoiding silent session hangs.
+- Sample per-frame transmit log in NCM relay (#305): sample NCM frame logs 1 in 300 to reduce CPU and heap allocation pressure on legacy head units.
+- Report dock-bar toggle in diagnostics and refine episode reset log (#363).
+
+See [v0.3.16 release notes](docs/RELEASE-NOTES-0.3.16.md) for details.
+
 # DiPlay 0.3.15 — 2026-11-02
 
 - Ignore dock-squeezed shrinks at any age, not just inside the settle window (#363): recognize dock bar squeezes by signature across the entire session and keep the established fullscreen baseline, preventing latched black borders.
