@@ -5389,7 +5389,7 @@ class CarPlayHostActivity : ComponentActivity() {
             val readdBounds = surfaceReaddBounds
             if (dockRefrontAttempts > 0 && readdBounds != null &&
                 bounds.height >= readdBounds.height) {
-                appendLog("Display: full height restored after task re-front (attempts=$dockRefrontAttempts)")
+                appendLog("Display: full height restored; dock re-front episode closed (attempts=$dockRefrontAttempts)")
                 dockRefrontAttempts = 0
             }
             val transitionalShrink = fallbackVideoBounds != bounds && isTransitionalShrinkAfterReadd(bounds)

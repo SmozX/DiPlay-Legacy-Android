@@ -4843,6 +4843,7 @@ class DiPlayActivity : ComponentActivity() {
         appendLine()
         appendLine("--- Last received boot and app-launch result ---")
         appendLine(StartupDiagnosticSnapshot.report(appContext))
+        appendLine("Experimental display: dockBarRefront=${AirPlayPersistence.loadDockBarRefront(appContext)}")
         appendLine("Startup settings: openAfterBoot=${AirPlayPersistence.loadAutoStartOnBoot(appContext)} " +
             "connectWhenOpened=${DiPlayPreferences.autoConnect(appContext)}")
         appendLine()
